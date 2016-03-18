@@ -1,4 +1,5 @@
 import os
+import datetime
 
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
@@ -8,6 +9,10 @@ def listdir_fullpath(d):
 #        for line in inlist:
 #            outfile.write(line)
 #            outfile.write('\n')
+
+def outfilename():
+    prefix, ext, timestamp = 'search', '.txt', datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    return '_'.join((prefix, timestamp + ext))
 
 def savefile(intuplelist, outfile, rootpath, searchstring):
     with open(outfile, 'a', encoding = 'utf-8') as myfile:
@@ -39,43 +44,42 @@ def searchinfile(infilepath, searchstring):
     print('Searched file: ' + infilepath)
     return (infilepath, searchresult)
 
-def multi_search(pathlist, searchstring, outlist):
-    if len(pathlist) == 1:
-        if os.path.isdir(pathlist[0]):
-            subpathlist = listdir_fullpath(pathlist[0])
-            multi_search(subpathlist, searchstring, outlist)
-        elif os.path.isfile(pathlist[0]):
-            resultinfile = searchinfile(pathlist[0], searchstring)
-            outlist.append(resultinfile)
-        else:
-            print('Do not know what is', pathlist[0])
-    elif len(pathlist) > 1:
-        if os.path.isdir(pathlist[0]):
-            subpathlist = listdir_fullpath(pathlist[0])
-            multi_search(subpathlist, searchstring, outlist)
-            multi_search(pathlist[1:], searchstring, outlist)
-        elif os.path.isfile(pathlist[0]):
-            resultinfile = searchinfile(pathlist[0], searchstring)
-            outlist.append(resultinfile)
-            multi_search(pathlist[1:], searchstring, outlist)
-        else:
-            print('Do not know what is', pathlist[0])
+def searchany_infile(infilepath, *searchstring):
+    searchresult = []
+    with open(infilepath, 'r') as f:
+        for num, line in enumerate(f, 1):
+            if any(s in line for s in searchstring):
+                searchresult.append((str(num), line))
+    print('Searched file: ' + infilepath)
+    return (infilepath, searchresult)
+
+def multi_search(pathlist, *searchstring):
+    if len(pathlist) < 1:
+        return []
     else:
-        pass
-    return outlist
+        if os.path.isdir(pathlist[0]):
+            subpathlist = listdir_fullpath(pathlist[0])
+            return multi_search(subpathlist, *searchstring) +multi_search(pathlist[1:], *searchstring)
+        elif os.path.isfile(pathlist[0]):
+            resultinfile = searchany_infile(pathlist[0], *searchstring)
+            return [resultinfile] + multi_search(pathlist[1:], *searchstring)
+        else:
+            print('Do not know what is', pathlist[0])
+            return multi_search(pathlist[1:], *searchstring)
 
 def main():
     rootpath = input('Please specify the root path: ')
     searchstring = input('Please specify the search string: ')
+    searchlist = searchstring.split(',')
     pathlist = listdir_fullpath(rootpath)
-    result_storage = []
-    allresults = multi_search(pathlist, searchstring, result_storage)
+    allresults = multi_search(pathlist, *searchlist)
     # sort the result list based the number of hits
     allresults.sort(key=lambda t: len(t[1]), reverse=True)
 
     # save to file
-    outfilename = 'search_results.txt'
-    outfilepath = os.path.join(rootpath, outfilename)
+    outfile = outfilename()
+    outdir = './'
+    outfilepath = os.path.join(outdir, outfile)
     savefile(allresults, outfilepath, rootpath, searchstring)
 
 if __name__ == '__main__':
