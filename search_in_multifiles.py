@@ -4,12 +4,6 @@ import datetime
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
 
-#def write_list_to_file(inlist, outfile):
-#    with open(outfile, mode='a', encoding='utf-8') as outfile:
-#        for line in inlist:
-#            outfile.write(line)
-#            outfile.write('\n')
-
 def outfilename():
     prefix, ext, timestamp = 'search', '.txt', datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     return '_'.join((prefix, timestamp + ext))
@@ -44,12 +38,17 @@ def searchinfile(infilepath, searchstring):
     print('Searched file: ' + infilepath)
     return (infilepath, searchresult)
 
-def searchany_infile(infilepath, *searchstring):
+def searchany_infile(infilepath, *searchstring, verbose=False):
     searchresult = []
     with open(infilepath, 'r') as f:
-        for num, line in enumerate(f, 1):
-            if any(s in line for s in searchstring):
-                searchresult.append((str(num), line))
+        if verbose:
+            print(infilepath)  # for debugging
+        try:
+            for num, line in enumerate(f, 1):
+                if any(s in line for s in searchstring):
+                    searchresult.append((str(num), line))
+        except UnicodeDecodeError as e:
+            print('Error for reading', infilepath+':', e)
     print('Searched file: ' + infilepath)
     return (infilepath, searchresult)
 
@@ -66,6 +65,15 @@ def multi_search(pathlist, *searchstring):
         else:
             print('Do not know what is', pathlist[0])
             return multi_search(pathlist[1:], *searchstring)
+
+# traverse dir tree and list files with os.walk
+def tree(searchpath, rules=None, under=None, ignore = None):
+    '''traverse dir and return a generator for all files
+    options:
+        rules: return files with certain rules (file name, size, creation time)
+        under: files under defined directory
+        ignore: ignore files under certain directory'''
+    return None
 
 def main():
     rootpath = input('Please specify the root path: ')
