@@ -1,8 +1,10 @@
 import os
+import re
 import datetime
 
-def listdir_fullpath(d):
-    return [os.path.join(d, f) for f in os.listdir(d)]
+def listdir_fullpath(directory):
+    # return [os.path.join(d, f) for f in os.listdir(d)] # os.listdir() is slow
+    return [item.path for item in os.scandir(directory)] # os.scandir() is faster and only available after Python 3.5
 
 def outfilename():
     prefix, ext, timestamp = 'search', '.txt', datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -29,27 +31,18 @@ def savefile(intuplelist, outfile, rootpath, searchstring):
             myfile.write('==================================')
             myfile.write('\n')
 
-def searchinfile(infilepath, searchstring):
-    searchresult = []
-    with open(infilepath, 'r') as f:
-        for num, line in enumerate(f, 1):
-            if searchstring in line:
-                searchresult.append((str(num), line))
-    print('Searched file: ' + infilepath)
-    return (infilepath, searchresult)
-
 def searchany_infile(infilepath, *searchstring, verbose=False):
     searchresult = []
     with open(infilepath, 'r') as f:
         if verbose:
-            print(infilepath)  # for debugging
+            print(infilepath) # for debugging
         try:
             for num, line in enumerate(f, 1):
                 if any(s in line for s in searchstring):
                     searchresult.append((str(num), line))
         except UnicodeDecodeError as e:
             print('Error for reading', infilepath+':', e)
-    print('Searched file: ' + infilepath)
+    #print('Searched file: ' + infilepath)
     return (infilepath, searchresult)
 
 def multi_search(pathlist, *searchstring):
@@ -66,14 +59,24 @@ def multi_search(pathlist, *searchstring):
             print('Do not know what is', pathlist[0])
             return multi_search(pathlist[1:], *searchstring)
 
-# traverse dir tree and list files with os.walk
-def tree(searchpath, rules=None, under=None, ignore = None):
-    '''traverse dir and return a generator for all files
+def makerule(pattern):
+    def filename_rule(filename, *arg):
+        return re.search(pattern, filename)
+    return filename_rule
+
+# traverse dir tree and list files with os.walk()
+def selectfiles(searchpath, filerules=lambda x, y:True, dirrules=lambda x: True):
+    '''
+    traverse dir and return a generator for all files
     options:
-        rules: return files with certain rules (file name, size, creation time)
-        under: files under defined directory
-        ignore: ignore files under certain directory'''
-    return None
+        filerules: select files based on certain rule (arg: path, filename; return True/False)
+        dirrules: select directory (arg: path; retrun True/False, default)
+    '''
+    for path, dirnames, filenames in os.walk(searchpath):
+        if dirrules(path):
+            for filename in filenames:
+                if filerules(filename, path):
+                    yield os.path.join(path, filename)
 
 def main():
     rootpath = input('Please specify the root path: ')
@@ -89,6 +92,11 @@ def main():
     outdir = './'
     outfilepath = os.path.join(outdir, outfile)
     savefile(allresults, outfilepath, rootpath, searchstring)
+    filename_rule = makerule('R$')
+
 
 if __name__ == '__main__':
-    main()
+    # main()
+    filename_rule = makerule('txt$')
+    for i in selectfiles(rootpath, filerules=filename_rule):
+        print(i)
